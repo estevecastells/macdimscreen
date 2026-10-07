@@ -49,6 +49,7 @@ MacDimScreen gets the same result through parts of macOS that still work: Night 
 - **Night dimming** for late nights, even below the lowest brightness.
 - **Pause for an hour** or turn it off from the menu bar. Sliders preview live, even during the day.
 - **Every app is tinted the same**, on built-in and external displays.
+- **Updates itself.** New releases are checked, signature-verified and installed automatically (you can turn this off).
 - **Leaves no trace.** Quitting or uninstalling restores your Night Shift and colour filter settings.
 
 ## Install

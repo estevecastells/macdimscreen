@@ -16,6 +16,7 @@ Releases are built and published by `.github/workflows/release.yml` when a versi
    - `MacDimScreen-macos-arm64.zip`: the menu bar app, bundling the daemon and installer
    - `macdimscreen-macos-arm64.tar.gz`: `dimd`, `dimctl`, `install.sh`, `uninstall.sh`
    - `SHA256SUMS`
+   - `SHA256SUMS.sig`: Ed25519 signature checked by the in-app updater, made with the `UPDATE_SIGNING_KEY` secret. The workflow fails rather than publish an unsigned release.
 6. Verify the release: `MDS_DOWNLOAD_ONLY=1 bash scripts/get.sh` downloads the latest release and checks its checksums without installing anything.
 
 Asset names carry no version, so `releases/latest/download/<asset>` always resolves to the newest release. `scripts/get.sh` depends on this.
