@@ -23,7 +23,10 @@ public final class AppModel {
     private(set) var openAtLogin = false
     private(set) var loginItemNeedsApproval = false
 
+    public let updates = Updates()
     private let client = DaemonClient()
+    /// The bundled background service is checked against the running one once per launch.
+    private var serviceChecked = false
     private let overlay = DimOverlay()
     private var pollTask: Task<Void, Never>?
     /// The mode to go back to after a live preview from a slider.
@@ -35,6 +38,7 @@ public final class AppModel {
     public init() {
         configureLoginItemOnFirstLaunch()
         start()
+        updates.start()
     }
 
     /// A static model for README screenshots: no daemon, no polling, no overlay.
@@ -103,6 +107,7 @@ public final class AppModel {
             if config == nil { config = try await client.config() }
             connection = .connected
             overlay.set(dimPct: s.target.dimPct)
+            await updateServiceIfOutdated()
         } catch DaemonError.notRunning {
             (status, config, connection) = (nil, nil, .missing)
             overlay.set(dimPct: 0)
@@ -150,6 +155,17 @@ public final class AppModel {
             }
             await refresh()
         }
+    }
+
+    /// After the app updates itself, the service it bundles is newer than the one
+    /// running: reinstall it, silently (it's a per-user agent, no password).
+    private func updateServiceIfOutdated() async {
+        guard !serviceChecked, !installing else { return }
+        serviceChecked = true
+        guard case let .pong(running, _)? = try? await client.send(.ping), let runningVersion = Version(running),
+            runningVersion < Updates.currentVersion
+        else { return }
+        installDaemon()
     }
 
     /// Install (or reinstall) the background service from the app bundle. It's a

@@ -2,6 +2,7 @@
 // Exits non-zero on failure. Wire fixtures live in /fixtures and are shared
 // with the Rust tests, so the two sides can't drift apart silently.
 
+import CryptoKit
 import DimKit
 import Foundation
 
@@ -88,6 +89,34 @@ for (req, expected) in zip(requests, requestFixtures) {
 // Formatting
 check(Format.kelvin(3412) == "3410K" && Format.kelvin(6500) == "6500K", "kelvin formatting")
 check(Format.minutes(40) == "40 min" && Format.minutes(90) == "1 h 30 min" && Format.minutes(60) == "1 h", "minutes")
+
+// Updates: versions, release JSON, signatures and checksums.
+check(Version("v0.10.0")! > Version("0.9.9")! && Version("1.0")! == Version("1.0.0")! && Version("0.1.0")! < Version("0.1.1")!,
+      "version ordering")
+check(Version("v1.x") == nil && Version("") == nil, "invalid versions rejected")
+check(try {
+    let r = try Release.decode(Data(fixture("release_latest.json").utf8))
+    return r.version == Version("0.2.0") && !r.draft && r.asset(UpdateConfig.appAsset) != nil && r.asset("nope") == nil
+}(), "decodes a GitHub release")
+check((try? ReleaseVerifier(publicKeyBase64: UpdateConfig.publicKey)) != nil, "embedded public key is valid")
+
+let testKey = Curve25519.Signing.PrivateKey()
+let payload = Data("abc123  MacDimScreen-macos-arm64.zip\ndef456  other.tar.gz\n".utf8)
+let verifier = try! ReleaseVerifier(publicKeyBase64: testKey.publicKey.rawRepresentation.base64EncodedString())
+let goodSig = Data(try! testKey.signature(for: payload).base64EncodedString().utf8)
+check(try verifier.verifiedSums(sums: payload, signature: goodSig)["MacDimScreen-macos-arm64.zip"] == "abc123",
+      "valid signature accepted")
+check((try? verifier.verifiedSums(sums: payload + Data("x".utf8), signature: goodSig)) == nil, "tampered sums rejected")
+let otherSig = Data(try! Curve25519.Signing.PrivateKey().signature(for: payload).base64EncodedString().utf8)
+check((try? verifier.verifiedSums(sums: payload, signature: otherSig)) == nil, "signature from another key rejected")
+
+let tmpFile = FileManager.default.temporaryDirectory.appendingPathComponent("kitchecks-\(getpid()).bin")
+try! Data("hello".utf8).write(to: tmpFile)
+let helloHex = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+check((try? ReleaseVerifier.check(tmpFile, named: "f", in: ["f": helloHex])) != nil, "checksum match")
+check((try? ReleaseVerifier.check(tmpFile, named: "f", in: ["f": String(repeating: "0", count: 64)])) == nil,
+      "checksum mismatch rejected")
+try? FileManager.default.removeItem(at: tmpFile)
 
 // Client error mapping: connecting to a missing socket means "not running".
 let semaphore = DispatchSemaphore(value: 0)
