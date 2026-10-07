@@ -14,6 +14,8 @@ let package = Package(
         .target(name: "DimUI", dependencies: ["DimKit"]),
         // The menu bar app.
         .executableTarget(name: "MacDimScreen", dependencies: ["DimUI"]),
+        // Renders README screenshots from the real views: `swift run RenderScreenshots`.
+        .executableTarget(name: "RenderScreenshots", dependencies: ["DimUI", "DimKit"]),
         // Self-checking test runner. XCTest isn't available with Command Line
         // Tools alone, so `swift run KitChecks` works on any setup.
         .executableTarget(name: "KitChecks", dependencies: ["DimKit"], path: "Sources/KitChecks"),

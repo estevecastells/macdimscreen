@@ -37,6 +37,14 @@ public final class AppModel {
         start()
     }
 
+    /// A static model for README screenshots: no daemon, no polling, no overlay.
+    public init(previewStatus: Status, config: Config) {
+        status = previewStatus
+        self.config = config
+        connection = .connected
+        openAtLogin = true
+    }
+
     // MARK: Open at login
 
     private static let loginItemConfiguredKey = "loginItemConfigured"

@@ -1,1 +1,1 @@
-{"type":"config","config":{"mode":{"kind":"auto"},"latitude":41.5,"longitude":2.4,"location_estimated":false,"day_kelvin":6500.0,"night_kelvin":3400.0,"night_dim_pct":0.0,"night_tint_pct":40.0,"transition_minutes":40.0,"wake_time":"09:00"}}
+{"type":"config","config":{"mode":{"kind":"auto"},"latitude":41.5,"longitude":2.4,"location_estimated":false,"day_kelvin":6500.0,"night_kelvin":3400.0,"night_dim_pct":15.0,"night_tint_pct":40.0,"transition_minutes":40.0,"wake_time":"09:00"}}

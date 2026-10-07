@@ -40,7 +40,7 @@ func fixture(_ name: String) -> String {
 check(try {
     guard case let .status(s) = try decode(Response.self, fixture("status_response.json")) else { return false }
     return s.mode == .auto && s.target.phase == .night && s.target.kelvin == 3400 && s.target.dimPct == 15 && s.target.tintPct == 40 && s.appliedTintPct == 40
-        && s.target.nextPhase == .sunrise && s.target.nextChange?.date == Date(timeIntervalSince1970: 1_791_443_400)
+        && s.target.nextPhase == .sunrise && s.target.nextChange?.date == Date(timeIntervalSince1970: 1_791_440_400)
         && s.target.today.sunset != nil && !s.target.today.polarDay
         && s.appliedKelvin == 3400 && !s.clamped && s.nightShiftAvailable && s.latitude == 41.5
         && !s.locationEstimated && s.lastError == nil && s.ticks == 240

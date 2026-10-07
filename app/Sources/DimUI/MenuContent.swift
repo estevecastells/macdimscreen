@@ -87,24 +87,31 @@ private struct StatusView: View {
     }
 
     private var header: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: 12) {
             Image(systemName: phaseSymbol(status.target.phase))
-                .font(.system(size: 26))
-                .foregroundStyle(warmth(status.target.kelvin))
-                .frame(width: 34)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(headline).font(.system(size: 20, weight: .semibold, design: .rounded)).monospacedDigit()
+                .font(.system(size: 28))
+                .foregroundStyle(warmth(status.appliedKelvin ?? 6500))
+                .frame(width: 36)
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(status.appliedKelvin.map(Format.kelvin) ?? "Natural")
+                        .font(.system(size: 26, weight: .semibold, design: .rounded)).monospacedDigit()
+                    Text(status.target.phase.title).font(.callout).foregroundStyle(.secondary)
+                }
                 Text(subline).font(.caption).foregroundStyle(.secondary)
+                if !extras.isEmpty {
+                    Text(extras).font(.caption).foregroundStyle(.secondary)
+                }
             }
         }
     }
 
-    private var headline: String {
-        let t = status.target
-        var s = "\(t.phase.title) · \(status.appliedKelvin.map(Format.kelvin) ?? "6500K")"
-        if status.appliedTintPct != nil { s += "+" }
-        if t.dimPct >= 1 { s += " · \(Format.percent(t.dimPct)) dim" }
-        return s
+    /// What's applied on top of Night Shift right now.
+    private var extras: String {
+        var parts: [String] = []
+        if let tint = status.appliedTintPct { parts.append("Extra warmth \(Format.percent(tint))") }
+        if status.target.dimPct >= 1 { parts.append("Dimmed \(Format.percent(status.target.dimPct))") }
+        return parts.joined(separator: " · ")
     }
 
     private var subline: String {
