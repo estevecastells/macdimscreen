@@ -1,0 +1,23 @@
+[package]
+name = "dimd"
+description = "MacDimScreen daemon: runs per user under launchd, drives Night Shift on schedule, serves clients over a Unix socket."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lib]
+name = "dimd"
+path = "src/lib.rs"
+
+[[bin]]
+name = "dimd"
+path = "src/main.rs"
+
+[dependencies]
+dim-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+libc.workspace = true
+signal-hook.workspace = true

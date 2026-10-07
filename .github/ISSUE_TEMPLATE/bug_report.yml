@@ -1,0 +1,37 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Issues are triaged once a week.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations: { required: true }
+  - type: input
+    id: model
+    attributes:
+      label: Mac model, macOS version and display(s)
+      description: "`sysctl -n hw.model`, `sw_vers -productVersion`, and built-in / external display model"
+      placeholder: Mac17,9 / 26.6 / LG HDR 4K over USB-C
+    validations: { required: true }
+  - type: textarea
+    id: status
+    attributes:
+      label: "`dimctl status` output"
+      render: text
+    validations: { required: true }
+  - type: textarea
+    id: log
+    attributes:
+      label: Relevant lines from ~/Library/Logs/MacDimScreen/dimd.log
+      render: text
+  - type: checkboxes
+    id: conflicts
+    attributes:
+      label: Checks
+      options:
+        - label: f.lux (or another screen-colour app) is not running
+          required: true

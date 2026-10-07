@@ -1,0 +1,34 @@
+{
+  "type": "status",
+  "status": {
+    "mode": {
+      "kind": "auto"
+    },
+    "target": {
+      "phase": "night",
+      "kelvin": 3400.0,
+      "dim_pct": 15.0,
+      "tint_pct": 40.0,
+      "night_factor": 1.0,
+      "next_change": 1791443400,
+      "next_phase": "sunrise",
+      "today": {
+        "sunrise": 1791354840,
+        "sunset": 1791396540,
+        "morning": 1791356400,
+        "evening": 1791396540,
+        "polar_day": false
+      }
+    },
+    "applied_kelvin": 3400.0,
+    "applied_tint_pct": 40.0,
+    "clamped": false,
+    "night_shift_available": true,
+    "latitude": 41.5,
+    "longitude": 2.4,
+    "location_estimated": false,
+    "last_error": null,
+    "uptime_s": 3600.5,
+    "ticks": 240
+  }
+}

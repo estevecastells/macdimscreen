@@ -1,0 +1,8 @@
+/target
+/build
+/app/.build
+/app/.swiftpm
+*.xcodeproj
+.DS_Store
+*.log
+/dist

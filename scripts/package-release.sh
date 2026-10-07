@@ -1,0 +1,50 @@
+#!/bin/bash
+# Build release artifacts into dist/:
+#   MacDimScreen-macos-arm64.zip     menu bar app (bundles the daemon + installer)
+#   macdimscreen-macos-arm64.tar.gz  dimd, dimctl, install/uninstall scripts
+#   SHA256SUMS
+#   RELEASE_NOTES.md                    install instructions prepended to the release notes
+#
+# Asset names carry no version so that .../releases/latest/download/<name> always works.
+set -euo pipefail
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$root"
+
+export MACOSX_DEPLOYMENT_TARGET=14.0
+version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+repo="estevecastells/macdimscreen"
+
+scripts/build-app.sh
+
+rm -rf dist
+stage="dist/stage/macdimscreen"
+mkdir -p "$stage"
+cp target/release/dimd target/release/dimctl scripts/install.sh scripts/uninstall.sh LICENSE "$stage/"
+codesign --force --sign - "$stage/dimd" "$stage/dimctl" >/dev/null
+tar -C dist/stage -czf dist/macdimscreen-macos-arm64.tar.gz macdimscreen
+ditto -c -k --sequesterRsrc --keepParent build/MacDimScreen.app dist/MacDimScreen-macos-arm64.zip
+rm -rf dist/stage
+
+(cd dist && shasum -a 256 MacDimScreen-macos-arm64.zip macdimscreen-macos-arm64.tar.gz > SHA256SUMS)
+
+cat > dist/RELEASE_NOTES.md <<EOF2
+## Install
+
+**Terminal (recommended).** Installs the background service and the menu bar app, verifying checksums. No password needed:
+
+\`\`\`sh
+curl -fsSL https://raw.githubusercontent.com/${repo}/main/scripts/get.sh | bash
+\`\`\`
+
+**App download.** Download \`MacDimScreen-macos-arm64.zip\`, unzip it, and move **MacDimScreen.app** to Applications. Open it, then click **Install Background Service** in the menu bar. The app isn't notarized yet, so the first time macOS will say it can't verify it. Go to **System Settings → Privacy & Security** and click **Open Anyway**.
+
+**Command line only.** Download \`macdimscreen-macos-arm64.tar.gz\`, extract it, and run \`./macdimscreen/install.sh\`.
+
+Requires a Mac with Night Shift on macOS 14 or later. Quit f.lux first.
+
+EOF2
+
+echo "==> Release artifacts (v${version}):"
+ls -la dist
+cat dist/SHA256SUMS

@@ -1,0 +1,58 @@
+name: Release
+
+# Push a tag matching the Cargo version (e.g. v0.1.0) to build and publish
+# the downloadable app, CLI tarball and checksums. See docs/RELEASING.md.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        with:
+          toolchain: stable
+
+      - name: Tag must match the Cargo version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)"
+          if [ "$TAG" != "v$version" ]; then
+            echo "Tag $TAG does not match Cargo version v$version" >&2
+            exit 1
+          fi
+
+      - name: Test
+        run: |
+          cargo test --locked
+          (cd app && swift run -c debug KitChecks)
+
+      - name: Package
+        run: scripts/package-release.sh
+
+      - name: Smoke-test the packaged CLI
+        run: |
+          mkdir -p /tmp/smoke
+          tar -xzf dist/macdimscreen-macos-arm64.tar.gz -C /tmp/smoke
+          /tmp/smoke/macdimscreen/dimctl --version
+          /tmp/smoke/macdimscreen/dimd --dry-run --once --config /tmp/smoke/config.toml > /dev/null
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            dist/MacDimScreen-macos-arm64.zip \
+            dist/macdimscreen-macos-arm64.tar.gz \
+            dist/SHA256SUMS \
+            --title "MacDimScreen $TAG" \
+            --notes-file dist/RELEASE_NOTES.md \
+            --generate-notes \
+            --verify-tag

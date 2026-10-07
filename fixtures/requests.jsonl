@@ -1,0 +1,6 @@
+{"cmd":"status"}
+{"cmd":"get_config"}
+{"cmd":"set_mode","mode":{"kind":"auto"}}
+{"cmd":"set_mode","mode":{"kind":"off"}}
+{"cmd":"set_mode","mode":{"kind":"paused","until":1800000000}}
+{"cmd":"set_mode","mode":{"dim_pct":20,"kelvin":2700,"kind":"manual","tint_pct":40}}

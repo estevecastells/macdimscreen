@@ -1,0 +1,15 @@
+[package]
+name = "dimctl"
+description = "Command-line client for MacDimScreen: status, schedule, pause and settings."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[dependencies]
+dim-core.workspace = true
+dimd = { path = "../dimd" }
+serde_json.workspace = true
+libc.workspace = true
+clap = { version = "4", features = ["derive"] }
