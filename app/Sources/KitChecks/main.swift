@@ -47,6 +47,19 @@ check(try {
         && !s.locationEstimated && s.lastError == nil && s.ticks == 240
 }(), "decodes a full status response")
 
+// Polls skip redraws when only the daemon's counters moved, but not when anything shown changed.
+check(try {
+    guard case let .status(s) = try decode(Response.self, fixture("status_response.json")) else { return false }
+    var ticked = s
+    ticked.ticks += 1
+    ticked.uptimeS += 15
+    var warmer = ticked
+    warmer.target.kelvin -= 35
+    var errored = s
+    errored.lastError = "Night Shift is unavailable right now"
+    return s.showsSame(as: ticked) && ticked.showsSame(as: s) && !s.showsSame(as: warmer) && !s.showsSame(as: errored)
+}(), "status comparison ignores only ticks and uptime")
+
 let configJSON = fixture("config_response.json")
 check(try {
     guard case let .config(c) = try decode(Response.self, configJSON) else { return false }

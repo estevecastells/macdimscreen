@@ -24,7 +24,8 @@ struct MacDimScreenApp: App {
         MenuBarExtra {
             MenuContent(model: model)
         } label: {
-            MenuBarLabel(status: model.status, connection: model.connection)
+            // Only the symbol: reading `status` here would re-render the scene on every poll.
+            MenuBarLabel(symbol: model.menuBarSymbol)
         }
         .menuBarExtraStyle(.window)
     }

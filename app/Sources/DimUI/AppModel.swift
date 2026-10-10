@@ -18,6 +18,9 @@ public final class AppModel {
     public private(set) var status: Status?
     public private(set) var config: Config?
     public private(set) var connection: Connection = .connecting
+    /// The menu bar icon, kept apart from `status` so the status item only
+    /// redraws when the icon itself changes, not on every poll.
+    public private(set) var menuBarSymbol = MenuBarLabel.symbol(status: nil, connection: .connecting)
     private(set) var actionError: String?
     private(set) var installing = false
     private(set) var openAtLogin = false
@@ -29,14 +32,25 @@ public final class AppModel {
     private var serviceChecked = false
     private let overlay = DimOverlay()
     private var pollTask: Task<Void, Never>?
+    private var panelOpen = false
+    /// README screenshots: never talk to the daemon.
+    private var isPreview = false
+    private var windowObservers: [NSObjectProtocol] = []
     /// The mode to go back to after a live preview from a slider.
     private var previewRestore: Mode?
 
-    /// A status call is a single local socket round-trip.
-    static let pollInterval: Duration = .seconds(2)
+    /// A status call is a single local socket round-trip. While the panel is
+    /// open it's polled often so it feels live; while closed only the menu bar
+    /// icon and the dimming overlay need it, and the daemon only moves on every
+    /// 15 s tick (or a command), so a slower poll saves wakeups.
+    static let openPollInterval: Duration = .seconds(2)
+    static let closedPollInterval: Duration = .seconds(5)
+
+    var pollInterval: Duration { panelOpen ? Self.openPollInterval : Self.closedPollInterval }
 
     public init() {
         configureLoginItemOnFirstLaunch()
+        observePanelWindow()
         start()
         updates.start()
     }
@@ -46,7 +60,9 @@ public final class AppModel {
         status = previewStatus
         self.config = config
         connection = .connected
+        menuBarSymbol = MenuBarLabel.symbol(status: previewStatus, connection: .connected)
         openAtLogin = true
+        isPreview = true
     }
 
     // MARK: Open at login
@@ -95,25 +111,56 @@ public final class AppModel {
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.refresh()
-                try? await Task.sleep(for: AppModel.pollInterval)
+                guard let interval = self?.pollInterval else { return }
+                // The tolerance lets macOS coalesce this wakeup with others.
+                try? await Task.sleep(for: interval, tolerance: interval / 5)
             }
         }
+    }
+
+    /// The panel is the app's only window that can become key (the dimming
+    /// overlay can't), so key status tracks whether it's open. This backs up
+    /// the panel's onAppear/onDisappear, which SwiftUI doesn't call on every
+    /// open and close of a menu bar window on every macOS version.
+    private func observePanelWindow() {
+        let center = NotificationCenter.default
+        for (name, open) in [(NSWindow.didBecomeKeyNotification, true), (NSWindow.didResignKeyNotification, false)] {
+            windowObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.panelVisibilityChanged(open) }
+            })
+        }
+    }
+
+    /// The panel opened or closed. Opening refreshes at once and polls faster.
+    public func panelVisibilityChanged(_ open: Bool) {
+        guard open != panelOpen, !isPreview else { return }
+        panelOpen = open
+        if open { start() }
     }
 
     func refresh() async {
         do {
             let s = try await client.status()
-            status = s
+            if status.map({ !$0.showsSame(as: s) }) ?? true { status = s }
             if config == nil { config = try await client.config() }
-            connection = .connected
+            assign(\.connection, .connected)
             overlay.set(dimPct: s.target.dimPct)
             await updateServiceIfOutdated()
         } catch DaemonError.notRunning {
-            (status, config, connection) = (nil, nil, .missing)
+            if status != nil { status = nil }
+            if config != nil { config = nil }
+            assign(\.connection, .missing)
             overlay.set(dimPct: 0)
         } catch {
-            connection = .failed(error.localizedDescription)
+            assign(\.connection, .failed(error.localizedDescription))
         }
+        assign(\.menuBarSymbol, MenuBarLabel.symbol(status: status, connection: connection))
+    }
+
+    /// Observation notifies on every assignment, even of an equal value, and each
+    /// notification re-renders the menu bar item. Assign only real changes.
+    private func assign<T: Equatable>(_ keyPath: ReferenceWritableKeyPath<AppModel, T>, _ value: T) {
+        if self[keyPath: keyPath] != value { self[keyPath: keyPath] = value }
     }
 
     func setMode(_ mode: Mode) {

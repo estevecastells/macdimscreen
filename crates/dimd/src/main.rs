@@ -10,6 +10,8 @@ use dim_core::Config;
 use dimd::colorfilter::MediaAccessibility;
 use dimd::nightshift::CoreBrightness;
 use dimd::{flux, log, server, unix_now, Daemon};
+use signal_hook::consts::{SIGHUP, SIGINT, SIGTERM};
+use signal_hook::iterator::Signals;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -142,9 +144,21 @@ fn main() {
     let shared = server::Shared::new(daemon, Some(args.config.clone()));
     let _guard = RestoreGuard(shared.clone());
 
+    // Signals are handled on their own thread, which wakes the control loop, so the
+    // loop can sleep a whole tick instead of waking up to check a flag.
     let term = Arc::new(AtomicBool::new(false));
-    for sig in [signal_hook::consts::SIGTERM, signal_hook::consts::SIGINT, signal_hook::consts::SIGHUP] {
-        signal_hook::flag::register(sig, term.clone()).expect("register signal handler");
+    let mut signals = Signals::new([SIGTERM, SIGINT, SIGHUP]).expect("register signal handlers");
+    {
+        let (term, shared) = (term.clone(), shared.clone());
+        std::thread::Builder::new()
+            .name("signals".into())
+            .spawn(move || {
+                for _ in signals.forever() {
+                    term.store(true, Ordering::Relaxed);
+                    shared.kick();
+                }
+            })
+            .expect("spawn signal thread");
     }
     if let Err(e) = server::spawn(shared.clone(), &args.socket) {
         die(&format!("cannot listen on {}: {e}", args.socket.display()));
@@ -175,14 +189,8 @@ fn main() {
                 }
             }
         }
-        // Wakes early on settings changes; short slices keep SIGTERM prompt.
-        let deadline = std::time::Instant::now() + TICK;
-        while !term.load(Ordering::Relaxed) {
-            let left = deadline.saturating_duration_since(std::time::Instant::now());
-            if left.is_zero() || shared.wait(left.min(Duration::from_millis(500))) {
-                break;
-            }
-        }
+        // Wakes early on settings changes and signals.
+        shared.wait(TICK);
     }
     log!("shutting down");
     let _ = std::fs::remove_file(&args.socket);

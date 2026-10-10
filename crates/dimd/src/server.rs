@@ -153,3 +153,67 @@ pub fn spawn<N: NightShift + Send + 'static>(shared: Arc<Shared<N>>, path: &Path
     })?;
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::nightshift::State;
+    use std::time::Instant;
+
+    struct NoNightShift;
+
+    impl NightShift for NoNightShift {
+        fn read(&self) -> Result<State, String> {
+            Err("none".into())
+        }
+        fn set_enabled(&self, _: bool) -> Result<(), String> {
+            Ok(())
+        }
+        fn set_mode(&self, _: i32) -> Result<(), String> {
+            Ok(())
+        }
+        fn set_kelvin(&self, _: f32) -> Result<(), String> {
+            Ok(())
+        }
+        fn set_strength(&self, _: f32) -> Result<(), String> {
+            Ok(())
+        }
+    }
+
+    fn shared() -> Arc<Shared<NoNightShift>> {
+        let cfg = Config { latitude: 41.5, longitude: 2.4, ..Config::default() };
+        Shared::new(Daemon::new(cfg, Ok(NoNightShift), None, None, 0), None)
+    }
+
+    #[test]
+    fn wait_sleeps_the_whole_timeout_unless_kicked() {
+        let s = shared();
+        let start = Instant::now();
+        assert!(!s.wait(Duration::from_millis(50)));
+        assert!(start.elapsed() >= Duration::from_millis(50));
+    }
+
+    #[test]
+    fn kick_wakes_a_long_wait_and_is_consumed() {
+        // The control loop sleeps a whole tick; a signal or settings change must cut it short.
+        let s = shared();
+        let kicker = s.clone();
+        let t = std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(20));
+            kicker.kick();
+        });
+        let start = Instant::now();
+        assert!(s.wait(Duration::from_secs(10)));
+        assert!(start.elapsed() < Duration::from_secs(5));
+        t.join().unwrap();
+        // A kick wakes one wait, not every wait after it.
+        assert!(!s.wait(Duration::from_millis(10)));
+    }
+
+    #[test]
+    fn kick_before_wait_is_not_lost() {
+        let s = shared();
+        s.kick();
+        assert!(s.wait(Duration::from_secs(10)));
+    }
+}

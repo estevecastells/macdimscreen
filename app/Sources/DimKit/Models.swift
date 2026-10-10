@@ -117,6 +117,14 @@ public struct Status: Codable, Equatable, Sendable {
     public var lastError: String?
     public var uptimeS: Double
     public var ticks: UInt64
+
+    /// Equal apart from `uptimeS` and `ticks`, which change on every daemon tick
+    /// but aren't shown anywhere. Lets the app skip a redraw when nothing visible changed.
+    public func showsSame(as other: Status) -> Bool {
+        var a = self
+        (a.uptimeS, a.ticks) = (other.uptimeS, other.ticks)
+        return a == other
+    }
 }
 
 public struct Config: Codable, Equatable, Sendable {

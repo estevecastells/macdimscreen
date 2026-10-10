@@ -61,6 +61,8 @@ public struct MenuContent: View {
         }
         .padding(14)
         .frame(width: 320)
+        .onAppear { model.panelVisibilityChanged(true) }
+        .onDisappear { model.panelVisibilityChanged(false) }
     }
 }
 
