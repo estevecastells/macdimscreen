@@ -21,6 +21,7 @@ swift_bin="$(cd app && swift build -c release --show-bin-path)/MacDimScreen"
 echo "==> Assembling ${app}"
 rm -rf "$app"
 mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
+cp app/Resources/AppIcon.icns "$app/Contents/Resources/AppIcon.icns"
 cp "$swift_bin" "$app/Contents/MacOS/MacDimScreen"
 cp target/release/dimd target/release/dimctl "$app/Contents/Resources/"
 cp scripts/install.sh scripts/uninstall.sh "$app/Contents/Resources/"
@@ -35,6 +36,7 @@ cat > "$app/Contents/Info.plist" <<PLIST
   <key>CFBundleDisplayName</key><string>MacDimScreen</string>
   <key>CFBundleExecutable</key><string>MacDimScreen</string>
   <key>CFBundlePackageType</key><string>APPL</string>
+  <key>CFBundleIconFile</key><string>AppIcon</string>
   <key>CFBundleShortVersionString</key><string>${version}</string>
   <key>CFBundleVersion</key><string>${version}</string>
   <key>LSMinimumSystemVersion</key><string>14.0</string>
